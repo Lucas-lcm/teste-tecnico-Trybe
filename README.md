@@ -1,4 +1,4 @@
-# teste-tecnico-Trybe
+# Teste técnico Trybe
 Teste técnico realizado para vaga de Analista de Dados na TRYBE
 
 # Objetivo e contexto:
