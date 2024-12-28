@@ -1,0 +1,630 @@
+---
+title: "Análise exploratória - OULAD"
+author: "Lucas Cardoso de Menezes"
+date: "25/02/2022"
+output: html_document
+---
+
+### Objetivo e contexto:
+
+O time de aprendizagem da Universidade quer entender qual o perfil das pessoas estudantes, quais são os fatores relacionado ao desempenho das pessoas e quais recomendações/iniciativas você sugere para que o desempenho das pessoas estudantes melhore.
+
+O trabalho foi explorar os dados dispobilizados e direcionar a tomada de decisão do negócio.
+
+### Base de dados: *OULAD - Open University Learning Analytics Dataset*
+
+### Descrição:
+
+Um conjunto de dados contendo informações demográficas sobre os alunos, seus cursos frequentados e os resultados finais de cada curso.
+
+## Roteiro
+
+1. Mais sobre o conjunto de dados;
+2. Esquema do banco de dados;
+3. Preparando o ambiente para análise dos dados;
+4. Entendendo o pefil das pessoas estudantes(I);
+5. Fatores de desempenho(II);
+6. Conclusão(III).
+
+## 1. Mais sobre o conjunto de dados
+
+O conjunto de dados anônimos da *Open University Learning Analytics Dataset (OULAD)*, contém dados sobre cursos, alunos e suas interações com o *Virtual Learning Environment (VLE)* para sete cursos selecionados. As apresentações dos cursos começão em fevereiro e outubro - são marcadas como "B" e "J" respectivamente. O conjunto de dados consiste em tabelas conectadas usando identificadores exclusivos. Todas as tabelas são armazenadas no formato csv.
+
+Kuzilek J., Hlosta M., Zdrahal Z. Open University Learning Analytics dataset Sci.
+
+## 2. Esquema do Banco de dados
+
+Aqui temos um esquema (https://analyse.kmi.open.ac.uk/open_dataset) para ilustrar a estrutura de dados do conjunto.
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://analyse.kmi.open.ac.uk/resources/images/model.png")
+```
+
+Como você pode ver, existem muitos tipos diferentes de dados envolvidos, mas como queremos entender o perfil das pessoas estudantes e os fatores de desempenho utilizaremos:
+
+* Dados demográficos da amostra;
+* Uma medida do comprometimento dos alunos com o curso ao longo do período;
+* Uma medição de seu desempenho durante o período.
+
+Indo para o site indicado, podemos ver que estas informações estam contidas nas seguintes tabelas:
+
+* studentInfo;
+* studentAssessment;
+* assessments;
+* studentVle;
+* vle.
+
+Essas tabelas serão nossas fontes de dados para cumprimento dos objetivos.
+
+## 3.Preparanndo o ambiente para a análise de dados
+
+Para realizar essa análise contaremos com o uso de dois pacotes do R, o *dplyr* e o *plotly*. Um para auxiliar na manipulação das tabelas e o outro na geração dos gráficos que serão apresentados.
+
+Os pacotes estão disponíveis em:
+
+* dplyr: https://cran.r-project.org/web/packages/dplyr/index.html
+* plotly: https://cran.r-project.org/web/packages/plotly/index.html
+
+Ou utilizando os comandos:
+
+```{r echo=TRUE}
+# install.packages("dplyr")
+# install.packages("plotly")
+```
+
+Vamos utilizar o *libary* para chamar os pacotes após a instalação:
+
+```{r echo=TRUE, message=FALSE}
+library(dplyr)
+library(plotly)
+```
+
+Para finalizarmos a preparação do ambiente devemos informar o local onde se encontra os dados de entrada (inputs):
+
+```{r echo=TRUE, message=FALSE}
+# setwd(dir = ".../Input")
+```
+
+## 4. Entendendo o perfil das pessoas estudantes(I)
+
+Para podermos entender o perfil dos alunos presentes na base de dados utilizaremos a tabela **studentInfo** pois a mesma contém informações demográficas sobre os alunos junto com seus resultados. O arquivo contém as seguintes colunas: 
+
+```{r echo=TRUE, message=FALSE}
+student_info <-
+  read.csv(
+    file = paste0(getwd(),"/Input/studentInfo.csv")
+  )
+
+colnames(student_info)
+```
+
+Utilizaremos apenas as colunas que contém informações ligadas ao perfil demográfico do aluno, deixaremos também apenas os valores sem repetição, para termos um dado único de cada aluno:
+
+```{r echo=TRUE, message=FALSE}
+student_info_profile <-
+  student_info[,c(2:6,8,11)] %>%
+  distinct(id_student, .keep_all = TRUE)
+
+colnames(student_info_profile)
+```
+
+Gerando os quantitativos:
+
+```{r echo=TRUE, message=FALSE}
+#Tipos de apresentação e a quantidade de alunos
+student_info_presentation <-
+  student_info_profile %>%
+  mutate(
+    type_presentation = substr(code_presentation, nchar(code_presentation), nchar(code_presentation))
+  ) %>%
+  group_by(type_presentation) %>%
+  count() %>%
+  ungroup()
+
+student_info_presentation
+```
+
+```{r echo=FALSE, message=FALSE}
+student_info_presentation_fig <- plot_ly(
+  data = student_info_presentation,
+  x = ~type_presentation,
+  y = ~n,
+  type = 'bar'
+)
+
+student_info_presentation_fig <-
+  student_info_presentation_fig %>% layout(xaxis = list(title = 'Tipo de Apresentação'),
+                                           yaxis = list(title = 'Quantidade de Alunos'))
+
+student_info_presentation_fig
+```
+
+```{r echo=TRUE, message=FALSE}
+#Alunos por gênero
+student_info_gender <-
+  student_info_profile %>%
+  group_by(gender) %>%
+  count() %>%
+  ungroup()
+
+student_info_gender
+```
+
+```{r echo=FALSE, message=FALSE}
+student_info_gender_fig <- plot_ly(
+  data = student_info_gender,
+  x = ~gender,
+  y = ~n,
+  type = 'bar'
+)
+
+student_info_gender_fig <-
+  student_info_gender_fig %>% layout(xaxis = list(title = 'Gênero'),
+                                           yaxis = list(title = 'Quantidade de Alunos'))
+
+student_info_gender_fig
+```
+
+```{r echo=TRUE, message=FALSE}
+#Alunos por regiâo
+student_info_region <-
+  student_info_profile %>%
+  group_by(region) %>%
+  count() %>%
+  ungroup()
+
+student_info_region
+```
+
+```{r echo=TRUE, message=FALSE}
+#Escolaridade
+student_info_education <-
+  student_info_profile %>%
+  group_by(highest_education) %>%
+  count() %>%
+  ungroup()
+
+student_info_education
+```
+
+```{r echo=FALSE, message=FALSE}
+student_info_education_fig <- plot_ly(
+  data = student_info_education,
+  x = ~highest_education,
+  y = ~n,
+  type = 'bar'
+)
+
+student_info_education_fig <-
+  student_info_education_fig %>% layout(xaxis = list(title = 'Escolaridade'),
+                                           yaxis = list(title = 'Quantidade de Alunos'))
+
+student_info_education_fig
+```
+
+```{r echo=TRUE, message=FALSE}
+#Idade
+student_info_age <-
+  student_info_profile %>%
+  group_by(age_band) %>%
+  count() %>%
+  ungroup()
+
+student_info_age
+```
+
+```{r echo=FALSE, message=FALSE}
+student_info_age_fig <- plot_ly(
+  data = student_info_age,
+  x = ~age_band,
+  y = ~n,
+  type = 'bar'
+)
+
+student_info_age_fig <-
+  student_info_age_fig %>% layout(xaxis = list(title = 'Idade'),
+                                           yaxis = list(title = 'Quantidade de Alunos'))
+
+student_info_age_fig
+```
+
+```{r echo=TRUE, message=FALSE}
+#Portador de deficiência
+student_info_disability <-
+  student_info_profile %>%
+  group_by(disability) %>%
+  count() %>%
+  ungroup()
+
+student_info_disability
+```
+
+```{r echo=FALSE, message=FALSE}
+student_info_disability_fig <- plot_ly(
+  data = student_info_disability,
+  x = ~disability,
+  y = ~n,
+  type = 'bar'
+)
+
+student_info_disability_fig <-
+  student_info_disability_fig %>% layout(xaxis = list(title = 'Portador de deficiência'),
+                                           yaxis = list(title = 'Quantidade de Alunos'))
+
+student_info_disability_fig
+```
+
+```{r echo=TRUE, message=FALSE}
+#Informações demográficas compiladas
+student_demographic_data <-
+  student_info_profile %>%
+  group_by(gender, region, highest_education, age_band, disability) %>%
+  count() %>%
+  ungroup()
+
+student_demographic_data
+```
+
+Observando os gráficos chegamos a conclusão que temos um perfil multicultural de alunos, vindos de diversas regiões, com diversos níveis de conhecimento diferentes, com a maioria tendo até 35 anos de idade. Porém decidimos correlacioanar os dados que julgamos mais importantes(idade, escolaridade e região) para entender melhor o perfil da amostra:
+
+```{r echo=TRUE, message=FALSE}
+#Escolaridade por região dos alunos
+student_info_region_education <-
+  student_info_profile %>%
+  group_by(region, highest_education) %>%
+  count() %>%
+  ungroup()
+
+student_info_region_education
+```
+
+Qundo correlacionamos a escolaridade por região, vemos uma amsotra ainda homogênea.
+
+```{r echo=TRUE, message=FALSE}
+#Escolaridade por idade dos alunos
+student_info_age_education <-
+  student_info_profile %>%
+  group_by(age_band, highest_education) %>%
+  count() %>%
+  ungroup()
+
+student_info_age_education
+```
+
+Agora, correlacionando *Idade x Escolaridade*, conseguimos indentificar pontos onde existe uma maior quantidade de amostras, assim decidimos criar uma tabela apenas dos estudantes que contém esse perfil:
+
+```{r echo=TRUE, message=FALSE}
+#Escolaridade por idade dos alunos
+representative_student_group_info <-
+  student_info_profile %>%
+  subset(
+    age_band == "0-35" & 
+      (
+        highest_education == "A Level or Equivalent"  | 
+          highest_education == "Lower Than A Level"  | 
+          highest_education == "HE Qualification"
+      )
+    )
+
+#O quanto esse grupo representa
+group_percentage <- 
+  (nrow(representative_student_group_info)/nrow(student_info_profile))*100
+
+group_percentage
+```
+
+```{r echo=FALSE, message=FALSE}
+tabble <-
+  data.frame(
+    labels = c("Grupo Representativo", "Grupo Não Representativo"),
+    value = c(nrow(representative_student_group_info), (nrow(student_info_profile)-nrow(representative_student_group_info)))
+    )
+
+representative_pie <- 
+  plot_ly(tabble, labels = ~labels, values = ~value, type = 'pie')
+
+representative_pie <- 
+  representative_pie %>% layout(title = 'Amostras representativas',
+
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+
+representative_pie
+```
+
+
+**Após essas correlações, observar-se que as pessoas estudantes de idade '0-35' que possuem Nível superior, ou Ensino médio completo/cursando, representam o perfil geral dos alunos, por serem 68.8% das amostras.**.
+
+## 5. Fatores de dsempenho(II)
+
+O desempenho em cada avaliação é um bom indicador do conhecimento dos alunos sobre o curso. Iremos separar os exames finais das restantes avaliações, dado que o seu estatuto e a participação na avaliação final são diferentes das restantes.
+
+### Leitura dos dados de avaliação
+```{r echo=TRUE, message=FALSE}
+  #Informações das provas por estudante
+student_assessment <-
+  read.csv(
+    file = paste0(getwd(),"/Input/studentAssessment.csv")
+  ) 
+
+  #Informações das provas
+assessments <-
+  read.csv(
+    file = paste0(getwd(),"/Input/assessments.csv")
+  )
+```
+
+### Separando os Exames
+
+```{r echo=TRUE, message=FALSE}
+final_exams <-
+  assessments %>%
+  subset(assessment_type == "Exam")
+
+head(final_exams)
+
+others_exams <-
+  assessments %>%
+  subset(assessment_type != "Exam")
+
+head(others_exams)
+```
+
+Vamos indentificar qual a média de avaliação por aluno por modulo, e indentificar as atividade de quem tem as maiores e menores médias de avaliação.
+
+```{r echo=TRUE}
+#Criando data frame 'student_group_kpis'
+
+student_group_kpis <-
+  student_assessment %>%
+  mutate(pass = ifelse(score>=40, TRUE, FALSE))
+
+#Juntando com as informações de exame e criando as colunas de quem passou no exame e o peso da grade
+
+student_group_others_exams <-
+  student_group_kpis %>%
+  inner_join(others_exams, by = "id_assessment") 
+
+student_group_others_exams <-
+  student_group_others_exams %>%
+  mutate(weight_grade = score*weight/100)
+
+head(student_group_others_exams[,c(1,6,7,11)])
+```
+
+```{r echo=TRUE}
+#Média de avaliação final por aluno por módulo
+
+avg_grade_others_exams <-
+  student_group_others_exams %>%
+  dplyr::group_by(id_student, code_module, code_presentation) %>% 
+  mutate(avg_grade = sum(weight_grade)) %>%
+  select("id_student","code_module","code_presentation", "avg_grade")
+
+head(avg_grade_others_exams)
+
+#Pontuação dos exames finais
+
+student_group_final_exams <-
+  student_group_kpis %>%
+  inner_join(final_exams, by = "id_assessment")  %>%
+  dplyr::rename("exams_score" = "score")%>%
+  select("id_student","code_module","code_presentation", "exams_score")
+
+head(student_group_final_exams)
+```
+
+Tendo levantado os dados das avaliações, vamos verificar os dados de interações do aluno com o ambiente virtual da universidade
+
+### Verificando interações:
+
+Os conjuntos de dados referentes ao ambiente virtual da universidade contêm o feed de interação dos alunos com o conteúdo disponível. A partir desses dados, podemos inferir como um aluno estava em contato com seus assuntos, se o estudou de forma sólida e como utilizou o conteúdo.
+
+```{r}
+#Lendo as tabelas de interações
+
+student_vle <-
+  read.csv(
+    file = paste0(getwd(),"/Input/studentVle.csv")
+  )
+
+head(student_vle)
+
+vle <-
+  read.csv(
+    file = paste0(getwd(),"/Input/vle.csv")
+  )
+
+head(vle)
+```
+
+Se observarmos a tabela VLE, podemos indentificar que existem alguns dados sem referência de périodo de uso, portanto, para tornar a análise mais viável iremos filtra-los.
+
+```{r}
+#limpando os dados de VLE, pois algumas amostras não possuem a semana de referência para os materiais
+
+vle <-
+  vle %>%
+  subset(!is.na(week_from))
+
+head(vle)
+```
+
+Aqui podemos acompanhar o tempo médio após o início do curso que o aluno fez para utilizar os materiais e a quantidade média de cliques por material:
+
+```{r}
+#Média geral por aluno por módulo
+
+avg_per_student <-
+  student_vle %>%
+  dplyr::group_by(id_student, code_module, code_presentation) %>%
+  mutate(
+    date_mean = mean(date),
+    sum_click_mean = mean(sum_click)) %>%
+  select("id_student","code_module","code_presentation", "date_mean", "sum_click_mean")
+
+head(avg_per_student)
+```
+
+Como não podemos indentificar fatores de desempenho nos estudantes que desitiram, iremos tirar eles das amostras representativas:
+
+```{r}
+#Filtrando somente amostras representativas (Segundo a analise de perfil dos estudantes)
+
+representative_student_group_info <-
+  student_info %>%
+  subset(
+    age_band == "0-35" & 
+      (
+        highest_education == "A Level or Equivalent"  | 
+          highest_education == "Lower Than A Level"  | 
+          highest_education == "HE Qualification"
+      ) &
+      final_result != "Withdrawn"
+  ) %>%
+  distinct(id_student, .keep_all = TRUE)
+
+```
+
+```{r}
+#Compilando as tabelas relevantes
+
+df_1 <-
+  inner_join(avg_grade_others_exams, student_group_final_exams, 
+             by = c("id_student", "code_module", "code_presentation"))
+
+df_2 <-
+  inner_join(representative_student_group_info, df_1, 
+             by = c("id_student", "code_module", "code_presentation"))
+
+final_df <-
+  inner_join(df_2, avg_per_student, 
+             by = c("id_student", "code_module", "code_presentation")) %>%
+  select(num_of_prev_attempts, final_result, avg_grade, exams_score, date_mean, sum_click_mean)
+
+head(final_df[,-2])
+
+summary(final_df[,-2])
+```
+
+```{r echo=TRUE}
+nrow(final_df[final_df$final_result == "Pass",])
+nrow(final_df[final_df$final_result == "Distinction",])
+nrow(final_df[final_df$final_result == "Fail",])
+```
+
+Com uma contagem de "Pass" muito maior do que os outros rótulos, devemos ficar atentos.
+Foram detectados dois outliers: Um com média de cliques bem acima dos valores padrões e outro com uma única ocorrência de um número de tentativas anteriores. Para manter nossos dados o mais consistentes possível, esses casos serão removidos.
+
+```{r}
+final_df <-
+  final_df %>%
+  subset(sum_click_mean<10)
+```
+
+```{r}
+final_df <-
+  final_df %>%
+  subset(num_of_prev_attempts<4)
+```
+
+```{r}
+nrow(final_df)
+```
+### Separando os dados para enteder o perfil dos estudantes que passaram e os que falharam
+
+```{r}
+pass_student <-
+  final_df %>%
+  subset(final_result != "Fail")
+
+head(pass_student[,-2])
+
+nrow(pass_student)
+```
+
+```{r}
+fail_student <-
+  final_df %>%
+  subset(final_result == "Fail")
+
+head(fail_student[,-2])
+
+nrow(fail_student)
+```
+
+Como temos uma grande quantidade de amostras, utilizarei abaixo apenas as primeiras cem mil amostras (100.000) para montar os gráficos:
+
+### Dados dos que passaram
+
+```{r include=FALSE}
+gc()
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+group_for_analise_performance_pass <-
+  pass_student[1:100000,]
+
+performance_pass <- 
+  plot_ly(
+    group_for_analise_performance_pass, 
+    x = ~final_result, y = ~avg_grade, 
+    type = 'bar', name = 'Media nos exames'
+  )
+
+performance_pass <- 
+  performance_pass %>% 
+  add_trace(y = ~date_mean, name = 'Tempo interação com o material')
+
+performance_pass <- 
+  performance_pass %>% 
+  layout(xaxis = list(title = 'Pessoaas Estudantes'),
+         yaxis = list(title = 'Valores'), barmode = 'group')
+
+
+performance_pass
+```
+
+```{r include=FALSE}
+gc()
+```
+
+### Dados dos que falharam
+
+```{r include=FALSE}
+gc()
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+group_for_analise_performance_fail <-
+  fail_student[1:100000,]
+
+performance_fail <- 
+  plot_ly(
+    group_for_analise_performance_fail, 
+    x = ~final_result, y = ~avg_grade, 
+    type = 'bar', name = 'Media nos exames'
+  )
+
+performance_fail <- 
+  performance_fail %>% 
+  add_trace(y = ~date_mean, name = 'Tempo interação com o material')
+
+performance_fail <- 
+  performance_fail %>% 
+  layout(xaxis = list(title = 'Pessoaas Estudantes'),
+         yaxis = list(title = 'Valores'), barmode = 'group')
+
+
+performance_fail
+```
+
+```{r include=FALSE}
+gc()
+```
+
+## 6. Conclusão(III).
+
+Após a análise realizada, pode-se observar que os alunos que passaram e tiveram um melhor desempenho, no geral tinham mais tempo de interação com o material disponibilizado, além de notas mais elevadas nos exames de *Tutor Marked Assessment (TMA)* e de *Computer Marked Assessment (CMA)* em relação aos que não passaram. Isso pode indicar que, focar em iniciativas para aumentar a interatividade do estudante com a plataforma online, aumentando o engajamento com as provas que não são do exame final, é provável que a chance de sucesso dos alunos que não passaram aumentaria. Para que essa análise fique mais assertiva seria necessário seguir com algum modelo de regressão e identificar se esta hipótese é válida.
